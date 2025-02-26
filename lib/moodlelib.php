@@ -2693,11 +2693,11 @@ function require_logout() {
     // Clone of $USER object to be used by auth plugins.
     $user = fullclone($USER);
 
+    // Trigger event just BEFORE action.
+    $event->trigger();
+    
     // Delete session record and drop $_SESSION content.
     \core\session\manager::terminate_current();
-
-    // Trigger event AFTER action.
-    $event->trigger();
 
     // Hook to execute auth plugins redirection after event trigger.
     foreach ($authplugins as $authplugin) {
