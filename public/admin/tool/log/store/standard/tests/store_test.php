@@ -35,6 +35,39 @@ final class store_test extends \advanced_testcase {
     private $wedisabledgc = false;
 
     /**
+     * Test that logging out while logged in as another user records the real user.
+     *
+     * @covers ::require_logout
+     */
+    public function test_logout_event_records_realuserid(): void {
+        global $DB, $USER;
+
+        $this->resetAfterTest();
+        $this->preventResetByRollback(); // Logging waits till the transaction gets committed.
+
+        $this->setAdminUser();
+        $realuserid = $USER->id;
+        $user = self::getDataGenerator()->create_user();
+
+        set_config('enabled_stores', 'logstore_standard', 'tool_log');
+        set_config('buffersize', 0, 'logstore_standard');
+        set_config('logguests', 1, 'logstore_standard');
+        get_log_manager(true);
+
+        \core\session\manager::loginas($user->id, \context_system::instance());
+        $DB->delete_records('logstore_standard_log');
+
+        require_logout();
+
+        $log = $DB->get_record('logstore_standard_log', [
+            'eventname' => '\\core\\event\\user_loggedout',
+        ], '*', MUST_EXIST);
+        $this->assertSame((int) $user->id, (int) $log->userid);
+        $this->assertSame((int) $user->id, (int) $log->objectid);
+        $this->assertSame((int) $realuserid, (int) $log->realuserid);
+    }
+
+    /**
      * Tests log writing.
      *
      * @param bool $jsonformat True to test with JSON format
